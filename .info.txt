@@ -1,12 +1,20 @@
-Voam Na Version -  1.0.0 A
+Voam Na Version -  1.0.2 A
 
-Version Codename - DENDRO
+Version Codename - CHEETAH
 
 -----
 
 What's New:
 
-- New Engine. 
+- Day and Night System. IRL 24 minutes = 24 hours in game.
+
+- Slime appearance modified.
+
+- Custom skins can be added in settings.
+
+- Player name.
+
+- GUI scaling.
 
 -----
 
