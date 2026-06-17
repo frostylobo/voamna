@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>VOAM NA</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Trebuchet MS', sans-serif; }
+
+        /* ============ LOADING SCREEN ============ */
+        #loading-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #111; z-index: 200; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; color: white; transition: opacity 0.5s ease;
+        }
+        #loading-bar-bg { width: 300px; height: 20px; background: #333; border-radius: 10px; overflow: hidden; border: 2px solid #555; margin-top: 15px; }
+        #loading-bar-fill { width: 0%; height: 100%; background: #00ffcc; transition: width 0.1s linear; }
+
+        /* ============ GENERIC FULLSCREEN OVERLAY ============ */
+        .screen-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 150; display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            color: white; text-align: center;
+        }
+        .screen-overlay.active { display: flex; }
+
+        /* ============ MAIN MENU ============ */
+        #main-menu {
+            background: #0a0a0a;
+            background-size: cover; background-position: center; background-repeat: no-repeat;
+        }
+        #main-menu .menu-bg-fallback {
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at center, #1a2030 0%, #050507 80%);
+            z-index: -1;
+        }
+        #main-menu .menu-bg-img {
+            position: absolute; inset: 0;
+            background-size: cover; background-position: center;
+            filter: brightness(0.55) saturate(1.1);
+            z-index: 0;
+        }
+        #main-menu .menu-content { position: relative; z-index: 2; }
+        #main-menu h1 {
+            font-size: 88px; letter-spacing: 18px; margin: 0 0 10px 0;
+            font-weight: 900; color: #fff;
+            text-shadow: 0 0 25px rgba(0,255,204,0.7), 0 4px 0 #001a14, 0 0 60px rgba(0,255,204,0.4);
+            animation: titlePulse 3s ease-in-out infinite;
+        }
+        #main-menu .subtitle {
+            font-size: 14px; letter-spacing: 6px; color: #00ffcc; opacity: 0.85;
+            margin-bottom: 60px; text-transform: uppercase;
+        }
+        @keyframes titlePulse {
+            0%, 100% { text-shadow: 0 0 25px rgba(0,255,204,0.7), 0 4px 0 #001a14, 0 0 60px rgba(0,255,204,0.4); }
+            50% { text-shadow: 0 0 40px rgba(0,255,204,1), 0 4px 0 #001a14, 0 0 90px rgba(0,255,204,0.7); }
+        }
+        .btn-primary {
+            background: linear-gradient(180deg, #00ffcc 0%, #00b894 100%);
+            color: #001a14; border: none; padding: 18px 60px;
+            font-size: 22px; font-weight: 900; letter-spacing: 6px;
+            border-radius: 4px; cursor: pointer; text-transform: uppercase;
+            box-shadow: 0 6px 0 #007a5e, 0 10px 30px rgba(0,255,204,0.4);
+            transition: transform 0.1s, box-shadow 0.1s;
+            font-family: inherit;
+        }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #007a5e, 0 14px 40px rgba(0,255,204,0.6); }
+        .btn-primary:active { transform: translateY(4px); box-shadow: 0 2px 0 #007a5e, 0 4px 10px rgba(0,255,204,0.3); }
+        .btn-secondary {
+            background: rgba(20,20,30,0.85); color: #00ffcc; border: 2px solid #00ffcc;
+            padding: 12px 32px; font-size: 16px; font-weight: bold; letter-spacing: 3px;
+            border-radius: 4px; cursor: pointer; text-transform: uppercase;
+            transition: background 0.2s, transform 0.1s; font-family: inherit;
+        }
+        .btn-secondary:hover { background: rgba(0,255,204,0.15); transform: translateY(-1px); }
+        .btn-danger {
+            background: rgba(40,10,15,0.85); color: #ff5566; border: 2px solid #ff5566;
+            padding: 12px 32px; font-size: 16px; font-weight: bold; letter-spacing: 3px;
+            border-radius: 4px; cursor: pointer; text-transform: uppercase;
+            transition: background 0.2s; font-family: inherit;
+        }
+        .btn-danger:hover { background: rgba(255,85,102,0.18); }
+
+        /* ============ WORLD LIST PAGE ============ */
+        #world-list-page { background: linear-gradient(180deg, #0d1117 0%, #1a0f2e 100%); padding-top: 80px; justify-content: flex-start; }
+        .page-title {
+            font-size: 36px; letter-spacing: 8px; color: #fff; margin: 0 0 30px 0;
+            text-transform: uppercase; font-weight: 900;
+            text-shadow: 0 0 20px rgba(0,255,204,0.6);
+        }
+        .page-bar {
+            display: flex; gap: 18px; align-items: center; margin-bottom: 40px;
+        }
+        .world-list {
+            width: 600px; max-width: 90vw; max-height: 60vh; overflow-y: auto;
+            display: flex; flex-direction: column; gap: 12px;
+        }
+        .world-item {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(255,255,255,0.05); border: 1px solid rgba(0,255,204,0.25);
+            padding: 16px 22px; border-radius: 6px; cursor: pointer;
+            transition: background 0.2s, border-color 0.2s, transform 0.1s;
+        }
+        .world-item:hover { background: rgba(0,255,204,0.1); border-color: #00ffcc; transform: translateX(4px); }
+        .world-item .w-name { font-size: 18px; font-weight: bold; color: #fff; }
+        .world-item .w-meta { font-size: 11px; color: #888; margin-top: 4px; letter-spacing: 1px; }
+        .world-item .w-actions { display: flex; gap: 8px; }
+        .icon-btn {
+            background: rgba(0,0,0,0.4); border: 1px solid #555; color: #ccc;
+            padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+            font-family: inherit;
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .icon-btn.del:hover { background: rgba(255,85,102,0.2); color: #ff5566; border-color: #ff5566; }
+        .empty-state { color: #666; font-style: italic; padding: 40px; font-size: 14px; }
+
+        /* ============ WORLD CREATE PAGE ============ */
+        #world-create-page { background: linear-gradient(180deg, #0d1117 0%, #1a0f2e 100%); padding-top: 80px; justify-content: flex-start; }
+        .create-form {
+            display: flex; flex-direction: column; gap: 22px; width: 440px; max-width: 90vw;
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(0,255,204,0.3);
+            padding: 40px; border-radius: 8px;
+        }
+        .form-field { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+        .form-field label { font-size: 12px; letter-spacing: 3px; color: #00ffcc; text-transform: uppercase; }
+        .form-field input {
+            background: rgba(0,0,0,0.6); border: 1px solid #444; color: #fff;
+            padding: 14px 16px; font-size: 16px; border-radius: 4px;
+            font-family: inherit; outline: none; transition: border-color 0.2s;
+        }
+        .form-field input:focus { border-color: #00ffcc; }
+        .form-hint { font-size: 11px; color: #777; }
+
+        /* ============ PAUSE MENU ============ */
+        #pause-menu {
+            background: rgba(0,0,0,0.78); backdrop-filter: blur(4px);
+        }
+        .pause-card {
+            background: rgba(15,15,25,0.95); border: 2px solid #00ffcc;
+            padding: 50px 60px; border-radius: 10px;
+            display: flex; flex-direction: column; gap: 16px; align-items: center;
+            box-shadow: 0 0 60px rgba(0,255,204,0.3);
+        }
+        .pause-card h2 { margin: 0 0 20px 0; font-size: 32px; letter-spacing: 10px; color: #fff; text-transform: uppercase; }
+
+        /* ============ DEATH SCREEN ============ */
+        #death-screen {
+            background: radial-gradient(ellipse at center, rgba(80,0,0,0.85) 0%, rgba(0,0,0,0.95) 80%);
+        }
+        #death-screen h2 {
+            font-size: 84px; letter-spacing: 14px; margin: 0 0 14px 0;
+            color: #ff3344; text-transform: uppercase; font-weight: 900;
+            text-shadow: 0 0 30px rgba(255,51,68,0.8), 0 4px 0 #200;
+            animation: deathPulse 2s ease-in-out infinite;
+        }
+        @keyframes deathPulse {
+            0%, 100% { opacity: 0.85; }
+            50% { opacity: 1; }
+        }
+        #death-screen .death-msg { color: #ccc; font-size: 16px; margin-bottom: 40px; max-width: 500px; line-height: 1.6; }
+
+        /* ============ IN-GAME UI ============ */
+        #pause-btn {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(0,0,0,0.8); border: 2px solid #00ffcc; color: #00ffcc;
+            padding: 10px 18px; font-weight: bold; border-radius: 5px;
+            cursor: pointer; z-index: 60; font-size: 14px; letter-spacing: 2px;
+            font-family: inherit; transition: background 0.2s;
+        }
+        #pause-btn:hover { background: rgba(0,255,204,0.2); }
+
+        #ui-container {
+            position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; align-items: center;
+            background: rgba(0, 0, 0, 0.7); padding: 15px 10px; border-radius: 10px; color: white;
+            font-size: 12px; z-index: 10; user-select: none;
+        }
+        #zoomSlider { writing-mode: vertical-lr; direction: rtl; width: 20px; height: 150px; margin-top: 10px; cursor: pointer; }
+
+        #sprint-container {
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7); padding: 10px 20px; border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; z-index: 10;
+        }
+        #sprint-bar-bg { width: 200px; height: 15px; background: #333; border-radius: 5px; overflow: hidden; border: 1px solid #555; margin-top: 5px; }
+        #sprint-bar-fill { width: 100%; height: 100%; background: #00ffcc; transition: width 0.1s linear, background-color 0.3s; }
+        #sprint-bar-fill.exhausted { background: #ff3333; }
+
+        #attack-container {
+            position: absolute; bottom: 30px; right: 30px; display: flex; gap: 15px; z-index: 10;
+        }
+        .atk-btn {
+            width: 75px; height: 75px; background: rgba(0, 0, 0, 0.8); border: 2px solid #00ffcc;
+            color: white; font-weight: bold; cursor: pointer; font-size: 11px; border-radius: 50%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5); transition: background 0.2s;
+            font-family: inherit;
+        }
+        .atk-btn:hover { background: rgba(50, 50, 50, 0.8); }
+        .atk-btn:disabled { border-color: #555; color: #888; background: rgba(20, 20, 20, 0.9); cursor: not-allowed; }
+
+        #debug-panel {
+            position: absolute; top: 20px; right: 20px;
+            background: rgba(0, 0, 0, 0.85); border: 1px solid #ffcc00;
+            color: #ffcc00; padding: 12px; border-radius: 6px;
+            font-family: monospace; font-size: 11px; line-height: 1.5;
+            z-index: 50; pointer-events: none; display: none;
+        }
+
+        #inv-toggle-btn {
+            position: absolute; top: 20px; right: 20px; padding: 10px 15px;
+            background: rgba(0, 0, 0, 0.8); border: 2px solid #ff00cc; color: #ff00cc;
+            font-weight: bold; border-radius: 5px; cursor: pointer; z-index: 60;
+            font-family: inherit;
+        }
+        #inv-toggle-btn:hover { background: rgba(255, 0, 204, 0.2); }
+        #inv-panel {
+            position: absolute; top: 70px; right: 20px; width: 220px;
+            background: rgba(15, 15, 15, 0.95); border: 2px solid #ff00cc;
+            border-radius: 8px; color: white; padding: 15px; display: none; z-index: 60;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
+        .inv-title { font-weight: bold; font-size: 14px; border-bottom: 1px solid #ff00cc; padding-bottom: 5px; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .inv-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 13px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 4px; }
+        .inv-icon { width: 24px; height: 24px; margin-right: 10px; object-fit: contain; background: rgba(0,0,0,0.3); border-radius: 3px; }
+
+        /* ============ TOAST ============ */
+        #toast {
+            position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.9); color: #00ffcc; padding: 10px 22px;
+            border: 1px solid #00ffcc; border-radius: 4px; font-size: 13px;
+            z-index: 80; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+            letter-spacing: 1px;
+        }
+        #toast.show { opacity: 1; }
+    </style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div id="loading-screen">
+    <div style="font-size: 18px; font-weight: bold; letter-spacing: 2px;">LOADING WORLD...</div>
+    <div id="loading-bar-bg"><div id="loading-bar-fill"></div></div>
+</div>
+
+<!-- MAIN MENU -->
+<div id="main-menu" class="screen-overlay">
+    <div class="menu-bg-fallback"></div>
+    <div class="menu-bg-img" id="menu-bg-img"></div>
+    <div class="menu-content">
+        <h1>VOAM NA</h1>
+        <div class="subtitle">A Procedural Survival Wilderness</div>
+        <button class="btn-primary" onclick="gotoWorldList()">PLAY</button>
+    </div>
+</div>
+
+<!-- WORLD LIST PAGE -->
+<div id="world-list-page" class="screen-overlay">
+    <h2 class="page-title">Your Worlds</h2>
+    <div class="page-bar">
+        <button class="btn-primary" onclick="gotoCreateWorld()" style="padding: 12px 30px; font-size: 16px;">+ CREATE NEW WORLD</button>
+        <button class="btn-secondary" onclick="gotoMainMenu()">BACK</button>
+    </div>
+    <div class="world-list" id="world-list-container">
+        <div class="empty-state">No worlds yet. Create one to begin.</div>
+    </div>
+</div>
+
+<!-- WORLD CREATE PAGE -->
+<div id="world-create-page" class="screen-overlay">
+    <h2 class="page-title">Create World</h2>
+    <div class="create-form">
+        <div class="form-field">
+            <label>World Name</label>
+            <input type="text" id="input-world-name" maxlength="32" placeholder="My Wilderness">
+            <div class="form-hint">Shown in the world list.</div>
+        </div>
+        <div class="form-field">
+            <label>World Seed</label>
+            <input type="text" id="input-world-seed" maxlength="24" placeholder="leave blank for random">
+            <div class="form-hint">Same seed = same world. Numbers or text both work.</div>
+        </div>
+        <div style="display:flex; gap:14px; justify-content:center; margin-top:10px;">
+            <button class="btn-secondary" onclick="gotoWorldList()">CANCEL</button>
+            <button class="btn-primary" onclick="createWorld()" style="padding: 12px 30px; font-size: 16px;">CREATE WORLD</button>
+        </div>
+    </div>
+</div>
+
+<!-- PAUSE MENU -->
+<div id="pause-menu" class="screen-overlay">
+    <div class="pause-card">
+        <h2>PAUSED</h2>
+        <button class="btn-primary" onclick="resumeGame()" style="padding: 14px 40px; font-size: 18px;">RESUME</button>
+        <button class="btn-secondary" onclick="saveAndQuit()">SAVE &amp; QUIT</button>
+    </div>
+</div>
+
+<!-- DEATH SCREEN -->
+<div id="death-screen" class="screen-overlay">
+    <h2>YOU DIED</h2>
+    <div class="death-msg" id="death-msg">The wilderness has claimed you. Your belongings fall where you stood. Return to your spawn point to try again.</div>
+    <button class="btn-primary" onclick="respawnPlayer()" style="background: linear-gradient(180deg,#ff5566 0%,#aa2233 100%); box-shadow: 0 6px 0 #661122, 0 10px 30px rgba(255,85,102,0.4); color:#fff;">RESPAWN</button>
+</div>
+
+<!-- IN-GAME UI -->
+<button id="pause-btn" onclick="pauseGame()" style="display:none;">II PAUSE</button>
+
+<div id="debug-panel">
+    <div style="font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #ffcc00;">DEBUG ACTIVE (Press 'I' to close)</div>
+    <div id="debug-pos">PLAYER X: 0.00 | Y: 0.00</div>
+    <div id="debug-hp">PLAYER HP: 10.0 / 10</div>
+    <div id="debug-enemies">SLIMES SPAWNED: 0 / 128</div>
+</div>
+
+<button id="inv-toggle-btn" onclick="toggleInventory()" style="display:none;">BACKPACK</button>
+<div id="inv-panel">
+    <div class="inv-title"><span>YOUR PACK</span><span style="font-size:10px; color:#aaa; cursor:pointer;" onclick="resetSaveData()">[RESET]</span></div>
+    <div id="inv-items-list"></div>
+</div>
+
+<div id="ui-container" style="display:none;">
+    <div>ZOOM</div>
+    <input type="range" id="zoomSlider" min="0.5" max="3" step="0.1" value="2">
+</div>
+
+<div id="sprint-container" style="display:none;">
+    <div style="color: white; font-size: 12px; font-weight: bold;">SPRINT ENERGY</div>
+    <div id="sprint-bar-bg"><div id="sprint-bar-fill"></div></div>
+</div>
+
+<div id="attack-container" style="display:none;">
+    <button id="atk1" class="atk-btn"><span>PRI ATK</span><span id="cd1-txt" style="font-size:10px; color:#00ffcc; margin-top:2px;">1s CD</span></button>
+    <button id="atk2" class="atk-btn"><span>SEC ATK</span><span id="cd2-txt" style="font-size:10px; color:#ffcc00; margin-top:2px;">45s CD</span></button>
+</div>
+
+<div id="toast"></div>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+/* =====================================================================
+   VOAM NA - Procedural 2D Survival RPG
+   Single-file build. Textures expected at:
+     tex/G.png tex/S.png tex/W.png tex/char1.png tex/BG.png
+     over/T.png
+     item/wood.png
+   ===================================================================== */
+
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+window.addEventListener("resize", () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+const unit = 64;
+const MAP_SIZE = 256;
+let gridMaxUnits = MAP_SIZE;
+let gridLimit = gridMaxUnits * unit;
+
+/* ---------- GAME STATE MACHINE ---------- */
+const STATE = {
+    BOOT: 'boot',
+    MENU: 'menu',
+    WORLD_LIST: 'world_list',
+    WORLD_CREATE: 'world_create',
+    PLAYING: 'playing',
+    PAUSED: 'paused',
+    DEAD: 'dead'
+};
+let gameState = STATE.BOOT;
+let currentWorldId = null;   // active world's id (null when in menu)
+
+/* ---------- ASSET LOADING ---------- */
+let assetsLoaded = 0;
+const totalAssets = 7;
+
+function updateLoadingBar() {
+    assetsLoaded++;
+    const progress = (assetsLoaded / totalAssets) * 100;
+    document.getElementById("loading-bar-fill").style.width = progress + "%";
+    if (assetsLoaded >= totalAssets) {
+        setTimeout(() => {
+            const screen = document.getElementById("loading-screen");
+            if (screen) {
+                screen.style.opacity = "0";
+                setTimeout(() => screen.remove(), 500);
+            }
+            // After assets, go to main menu
+            gotoMainMenu();
+        }, 300);
+    }
+}
+
+// Textures Loading
+const grassImg = new Image(); grassImg.src = 'tex/G.png'; grassImg.onload = updateLoadingBar;
+const sandImg = new Image(); sandImg.src = 'tex/S.png'; sandImg.onload = updateLoadingBar;
+const waterImg = new Image(); waterImg.src = 'tex/W.png'; waterImg.onload = updateLoadingBar;
+const charImg = new Image(); charImg.src = 'tex/char1.png'; charImg.onload = updateLoadingBar;
+const treeImg = new Image(); treeImg.src = 'over/T.png'; treeImg.onload = updateLoadingBar;
+const woodImg = new Image(); woodImg.src = 'item/wood.png'; woodImg.onload = updateLoadingBar;
+
+const heartImg = new Image();
+heartImg.src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='purple'><path d='M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.5 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'/></svg>";
+heartImg.onload = updateLoadingBar;
+
+// Load menu background (does not block loading bar)
+const bgImg = new Image();
+bgImg.onload = () => {
+    document.getElementById('menu-bg-img').style.backgroundImage = "url('" + bgImg.src + "')";
+};
+bgImg.onerror = () => { /* fallback gradient remains */ };
+bgImg.src = 'tex/BG.png';
+
+/* =====================================================================
+   PERLIN NOISE  (Ken Perlin's improved noise, classic reference impl)
+   Compact pure-JS port. Produces output roughly in [-1, 1].
+   ===================================================================== */
+const Perlin = (function() {
+    // Improved permutation (Ken Perlin's reference)
+    const p = new Uint8Array(512);
+    const permutation = [
+        151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,
+        8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,
+        35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,
+        134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,
+        55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,
+        18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,
+        250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,
+        189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,
+        172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,
+        228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,
+        107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,
+        138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180
+    ];
+    let seeded = false;
+
+    function seedWith(s) {
+        // Make a shuffled permutation table from the seed
+        const arr = new Uint8Array(256);
+        for (let i = 0; i < 256; i++) arr[i] = i;
+        // Mulberry32 PRNG seeded from s
+        let a = s >>> 0;
+        function rand() {
+            a |= 0; a = (a + 0x6D2B79F5) | 0;
+            let t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        }
+        for (let i = 255; i > 0; i--) {
+            const j = Math.floor(rand() * (i + 1));
+            const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+        }
+        for (let i = 0; i < 256; i++) p[i] = p[i + 256] = arr[i];
+        seeded = true;
+    }
+
+    function fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+    function lerp(a, b, t) { return a + t * (b - a); }
+    function grad(hash, x, y) {
+        const h = hash & 7;
+        const u = h < 4 ? x : y;
+        const v = h < 4 ? y : x;
+        return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+    }
+
+    function noise2D(x, y) {
+        if (!seeded) seedWith(1337);
+        const X = Math.floor(x) & 255;
+        const Y = Math.floor(y) & 255;
+        x -= Math.floor(x);
+        y -= Math.floor(y);
+        const u = fade(x);
+        const v = fade(y);
+        const A = p[X] + Y, AA = p[A], AB = p[A + 1];
+        const B = p[X + 1] + Y, BA = p[B], BB = p[B + 1];
+        return lerp(
+            lerp(grad(p[AA], x, y),     grad(p[BA], x - 1, y),     u),
+            lerp(grad(p[AB], x, y - 1), grad(p[BB], x - 1, y - 1), u),
+            v
+        );
+    }
+
+    // Fractal Brownian Motion (multi-octave noise)
+    function fbm(x, y, octaves, lacunarity, gain, frequency) {
+        let sum = 0, amp = 1, freq = frequency || 1, max = 0;
+        for (let i = 0; i < octaves; i++) {
+            sum += noise2D(x * freq, y * freq) * amp;
+            max += amp;
+            amp *= gain;
+            freq *= lacunarity;
+        }
+        return sum / max;  // normalized to roughly [-1, 1]
+    }
+
+    return {
+        seed: seedWith,
+        noise2D: noise2D,
+        fbm: fbm
+    };
+})();
+
+/* =====================================================================
+   STORAGE LAYER (localStorage-backed world + player data)
+   Schema:
+     voamna_worlds            -> JSON array of world ids
+     voamna_world_<id>        -> { id, name, seed, createdAt, map, overlay }  (map & overlay are packed strings)
+     voamna_player_<id>       -> { x, y, hp, maxHp, inventory, deathDrops }
+   ===================================================================== */
+const STORAGE = {
+    WORLDS: 'voamna_worlds',
+    worldKey: (id) => 'voamna_world_' + id,
+    playerKey: (id) => 'voamna_player_' + id
+};
+
+function getWorldRegistry() {
+    try { return JSON.parse(localStorage.getItem(STORAGE.WORLDS) || '[]'); }
+    catch(e) { return []; }
+}
+function setWorldRegistry(list) {
+    localStorage.setItem(STORAGE.WORLDS, JSON.stringify(list));
+}
+function saveWorld(world) {
+    localStorage.setItem(STORAGE.worldKey(world.id), JSON.stringify(world));
+}
+function loadWorld(id) {
+    try { return JSON.parse(localStorage.getItem(STORAGE.worldKey(id))); }
+    catch(e) { return null; }
+}
+function deleteWorld(id) {
+    localStorage.removeItem(STORAGE.worldKey(id));
+    localStorage.removeItem(STORAGE.playerKey(id));
+    const reg = getWorldRegistry().filter(w => w !== id);
+    setWorldRegistry(reg);
+}
+function savePlayer(id, data) {
+    localStorage.setItem(STORAGE.playerKey(id), JSON.stringify(data));
+}
+function loadPlayer(id) {
+    try { return JSON.parse(localStorage.getItem(STORAGE.playerKey(id))); }
+    catch(e) { return null; }
+}
+
+/* =====================================================================
+   WORLD GENERATION  (FastNoiseLite-based)
+   ===================================================================== */
+function hashSeedTo32(inputStr) {
+    // djb2-like hash to get a 32-bit seed from any string
+    let h = 5381;
+    for (let i = 0; i < inputStr.length; i++) {
+        h = ((h << 5) + h) + inputStr.charCodeAt(i);
+        h = h >>> 0;
+    }
+    return h >>> 0;
+}
+
+function generateWorld(name, seedStr) {
+    const seedNum = hashSeedTo32(seedStr);
+    const id = 'w_' + Date.now().toString(36) + '_' + Math.floor(Math.random() * 1e6).toString(36);
+
+    // Setup primary elevation noise
+    Perlin.seed(seedNum);
+    const FREQ = 0.008;
+    const OCTAVES = 4;
+
+    // Secondary noise for tree placement (uncorrelated with elevation)
+    const treeSeed = (seedNum ^ 0x9e3779b9) >>> 0;
+    const TREE_FREQ = 0.04;
+    const TREE_OCTAVES = 3;
+
+    const total = MAP_SIZE * MAP_SIZE;
+    const mapArr = new Array(total);
+    const overArr = new Array(total);
+    for (let i = 0; i < total; i++) overArr[i] = '0';
+
+    let spawnIndex = -1;
+
+    // Pass 1: terrain
+    for (let y = 0; y < MAP_SIZE; y++) {
+        for (let x = 0; x < MAP_SIZE; x++) {
+            const idx = y * MAP_SIZE + x;
+            // Perlin FBM noise in [-1,1], normalize to [0,1]
+            let n = (Perlin.fbm(x, y, OCTAVES, 2.0, 0.5, FREQ) + 1) * 0.5;
+            // gentle island bias toward edges so the world feels enclosed
+            const cx = MAP_SIZE / 2, cy = MAP_SIZE / 2;
+            const dx = (x - cx) / cx, dy = (y - cy) / cy;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const islandFalloff = Math.max(0, 1 - Math.pow(dist, 2.8));
+            n = n * 0.55 + islandFalloff * 0.45;
+
+            let tile;
+            if (n < 0.32) tile = 'W';
+            else if (n < 0.42) tile = 'S';
+            else tile = 'G';
+            mapArr[idx] = tile;
+        }
+    }
+
+    // Pass 2: pick spawn near center on a grass tile
+    const center = Math.floor(MAP_SIZE / 2);
+    outer:
+    for (let r = 0; r < MAP_SIZE; r++) {
+        for (let dy = -r; dy <= r; dy++) {
+            for (let dx = -r; dx <= r; dx++) {
+                if (r > 0 && Math.abs(dx) !== r && Math.abs(dy) !== r) continue;
+                const x = center + dx, y = center + dy;
+                if (x < 1 || y < 1 || x >= MAP_SIZE - 1 || y >= MAP_SIZE - 1) continue;
+                const idx = y * MAP_SIZE + x;
+                if (mapArr[idx] === 'G') {
+                    spawnIndex = idx;
+                    break outer;
+                }
+            }
+        }
+    }
+    if (spawnIndex === -1) {
+        for (let i = 0; i < total; i++) {
+            if (mapArr[i] === 'G') { spawnIndex = i; break; }
+        }
+    }
+    if (spawnIndex === -1) {
+        spawnIndex = center * MAP_SIZE + center;
+        mapArr[spawnIndex] = 'G';
+    }
+    overArr[spawnIndex] = 'Z';
+
+    // Pass 3: trees on grass tiles (skip 4-tile radius around spawn)
+    const sx = spawnIndex % MAP_SIZE, sy = Math.floor(spawnIndex / MAP_SIZE);
+    // Re-seed for tree noise so it's deterministic per world
+    Perlin.seed(treeSeed);
+    for (let y = 0; y < MAP_SIZE; y++) {
+        for (let x = 0; x < MAP_SIZE; x++) {
+            const idx = y * MAP_SIZE + x;
+            if (mapArr[idx] !== 'G') continue;
+            if (idx === spawnIndex) continue;
+            if (Math.abs(x - sx) <= 4 && Math.abs(y - sy) <= 4) continue;
+            const tn = (Perlin.fbm(x, y, TREE_OCTAVES, 2.0, 0.5, TREE_FREQ) + 1) * 0.5;
+            // denser near water (forest coasts) - lower threshold
+            const nearWater = isNearTile(mapArr, x, y, 'W', 2) ? 0.18 : 0;
+            const threshold = 0.62 - nearWater;
+            if (tn > threshold) overArr[idx] = 'T';
+        }
+    }
+
+    const world = {
+        id: id,
+        name: name || 'Unnamed World',
+        seed: seedStr,
+        seedNum: seedNum,
+        createdAt: Date.now(),
+        map: mapArr.join(''),
+        overlay: overArr.join('')
+    };
+    saveWorld(world);
+
+    // Register
+    const reg = getWorldRegistry();
+    reg.push(id);
+    setWorldRegistry(reg);
+
+    // Initialize empty player data
+    const spawnCol = spawnIndex % MAP_SIZE;
+    const spawnRow = Math.floor(spawnIndex / MAP_SIZE);
+    const playerData = {
+        x: spawnCol * unit + unit / 2,
+        y: spawnRow * unit + unit / 2,
+        hp: 10,
+        maxHp: 10,
+        inventory: { wood: 0 },
+        deathDrops: []   // [{ x, y, type, count }]
+    };
+    savePlayer(id, playerData);
+
+    return world;
+}
+
+function isNearTile(mapArr, x, y, tile, radius) {
+    for (let dy = -radius; dy <= radius; dy++) {
+        for (let dx = -radius; dx <= radius; dx++) {
+            const nx = x + dx, ny = y + dy;
+            if (nx < 0 || ny < 0 || nx >= MAP_SIZE || ny >= MAP_SIZE) continue;
+            if (mapArr[ny * MAP_SIZE + nx] === tile) return true;
+        }
+    }
+    return false;
+}
+
+/* =====================================================================
+   IN-MEMORY WORLD/PLAYER STATE (active during gameplay)
+   ===================================================================== */
+let mapArray = [];
+let overlayArray = [];
+let overlayHealth = {};
+let playerInventory = { wood: 0 };
+let player = {
+    x: 5 * unit, y: 5 * unit,
+    targetX: 5 * unit, targetY: 5 * unit,
+    hp: 10, maxHp: 10
+};
+let activePlayerData = null; // the per-world player data bundle
+
+function loadWorldIntoMemory(worldId) {
+    const world = loadWorld(worldId);
+    if (!world) {
+        showToast('World not found!');
+        return false;
+    }
+    currentWorldId = worldId;
+    // unpack
+    mapArray = world.map.split('');
+    overlayArray = world.overlay.split('');
+    gridMaxUnits = MAP_SIZE;
+    gridLimit = gridMaxUnits * unit;
+    cachedSpawnPoint = null;  // invalidate cache
+
+    // reset overlay health
+    overlayHealth = {};
+    for (let i = 0; i < overlayArray.length; i++) {
+        if (overlayArray[i] === 'T') overlayHealth[i] = 5;
+    }
+
+    // load player data
+    let pd = loadPlayer(worldId);
+    if (!pd) {
+        pd = { x: 0, y: 0, hp: 10, maxHp: 10, inventory: { wood: 0 }, deathDrops: [] };
+    }
+    activePlayerData = pd;
+    player.x = pd.x; player.y = pd.y;
+    player.targetX = pd.x; player.targetY = pd.y;
+    player.hp = pd.hp; player.maxHp = pd.maxHp || 10;
+    playerInventory = Object.assign({ wood: 0 }, pd.inventory || {});
+
+    // restore death drops as in-world drops
+    drops = [];
+    if (pd.deathDrops && pd.deathDrops.length) {
+        for (const d of pd.deathDrops) {
+            for (let i = 0; i < (d.count || 1); i++) {
+                drops.push({ type: d.type, x: d.x + (Math.random()-0.5)*30, y: d.y + (Math.random()-0.5)*30 });
+            }
+        }
+    }
+
+    // restore chopped trees (player may have harvested before saving)
+    // (trees already removed from world.overlay since the world was saved after chopping)
+
+    updateInventoryUI();
+    return true;
+}
+
+function persistActivePlayer() {
+    if (!currentWorldId || !activePlayerData) return;
+    activePlayerData.x = player.x;
+    activePlayerData.y = player.y;
+    activePlayerData.hp = player.hp;
+    activePlayerData.maxHp = player.maxHp;
+    activePlayerData.inventory = playerInventory;
+    // deathDrops already maintained on the object
+    savePlayer(currentWorldId, activePlayerData);
+}
+
+function persistActiveWorld() {
+    if (!currentWorldId) return;
+    const world = loadWorld(currentWorldId);
+    if (!world) return;
+    world.map = mapArray.join('');
+    world.overlay = overlayArray.join('');
+    saveWorld(world);
+}
+
+function resetSaveData() {
+    if (!currentWorldId) return;
+    if (!confirm('Reset your progress in this world? (Trees & items will be restored, but the world map stays the same.)')) return;
+    // Find spawn
+    const idx = overlayArray.indexOf('Z');
+    if (idx !== -1) {
+        const col = idx % MAP_SIZE, row = Math.floor(idx / MAP_SIZE);
+        player.x = col * unit + unit / 2;
+        player.y = row * unit + unit / 2;
+        player.targetX = player.x; player.targetY = player.y;
+    }
+    player.hp = player.maxHp;
+    playerInventory = { wood: 0 };
+    activePlayerData.deathDrops = [];
+    drops = [];
+    persistActivePlayer();
+    updateInventoryUI();
+    showToast('Progress reset.');
+}
+
+/* =====================================================================
+   SPAWN POINT FINDER  (reads "Z" from overlay array)
+   ===================================================================== */
+let cachedSpawnPoint = null;
+function findSpawnPoint() {
+    if (cachedSpawnPoint) return cachedSpawnPoint;
+    const idx = overlayArray.indexOf('Z');
+    if (idx !== -1) {
+        const col = idx % MAP_SIZE, row = Math.floor(idx / MAP_SIZE);
+        cachedSpawnPoint = { col, row, x: col * unit + unit / 2, y: row * unit + unit / 2 };
+        return cachedSpawnPoint;
+    }
+    // fallback: first walkable grass tile
+    for (let i = 0; i < mapArray.length; i++) {
+        if (mapArray[i] === 'G' && overlayArray[i] === '0') {
+            const col = i % MAP_SIZE, row = Math.floor(i / MAP_SIZE);
+            cachedSpawnPoint = { col, row, x: col * unit + unit / 2, y: row * unit + unit / 2 };
+            return cachedSpawnPoint;
+        }
+    }
+    cachedSpawnPoint = { col: 0, row: 0, x: unit/2, y: unit/2 };
+    return cachedSpawnPoint;
+}
+
+/* =====================================================================
+   GAME ENTITIES
+   ===================================================================== */
+let enemies = [];
+let drops = [];
+let vfxParticles = [];
+let camera = { x: 0, y: 0 };
+let feedback = { x: 0, y: 0, alpha: 0, color: "" };
+let zoom = 2;
+let sprintEnergy = 100, isExhausted = false;
+
+let debugMode = false;
+let debugLine = { startX: 0, startY: 0, endX: 0, endY: 0, color: "green", active: false };
+
+window.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === 'i' && gameState === STATE.PLAYING) {
+        debugMode = !debugMode;
+        document.getElementById("debug-panel").style.display = debugMode ? "block" : "none";
+        if (!debugMode) debugLine.active = false;
+    }
+    if (e.key === 'Escape' || e.key.toLowerCase() === 'p') {
+        if (gameState === STATE.PLAYING) pauseGame();
+        else if (gameState === STATE.PAUSED) resumeGame();
+    }
+});
+
+let nextAtk1Time = 0;
+let nextAtk2Time = 0;
+
+const zoomSlider = document.getElementById("zoomSlider");
+zoomSlider.value = zoom;
+zoomSlider.addEventListener("input", (e) => { zoom = parseFloat(e.target.value); });
+
+function toggleInventory() {
+    const panel = document.getElementById("inv-panel");
+    panel.style.display = (panel.style.display === "block") ? "none" : "block";
+}
+
+function updateInventoryUI() {
+    const listContainer = document.getElementById("inv-items-list");
+    if (!listContainer) return;
+    listContainer.innerHTML = "";
+    let hasItems = false;
+    for (const [item, count] of Object.entries(playerInventory)) {
+        if (count > 0) {
+            hasItems = true;
+            const row = document.createElement("div");
+            row.className = "inv-row";
+            const img = document.createElement("img");
+            img.className = "inv-icon";
+            img.src = item === "wood" ? woodImg.src : heartImg.src;
+            const label = document.createElement("span");
+            label.innerText = `${item.toUpperCase()}: x${Math.floor(count)}`;
+            row.appendChild(img);
+            row.appendChild(label);
+            listContainer.appendChild(row);
+        }
+    }
+    if (!hasItems) {
+        listContainer.innerHTML = "<div style='color:#666; font-style:italic; font-size:12px; text-align:center; padding:10px;'>Your backpack is empty.</div>";
+    }
+}
+
+/* Slime Spawning Loop */
+setInterval(() => {
+    if (gameState !== STATE.PLAYING) return;
+    if (mapArray.length > 0 && enemies.length < 128) {
+        let spawnCol = Math.floor(Math.random() * gridMaxUnits);
+        let spawnRow = Math.floor(Math.random() * gridMaxUnits);
+        let index = spawnRow * gridMaxUnits + spawnCol;
+        // keep slimes away from spawn point (3-tile radius)
+        const sp = findSpawnPoint();
+        if (Math.abs(spawnCol - sp.col) <= 3 && Math.abs(spawnRow - sp.row) <= 3) return;
+        if (mapArray[index] !== 'W' && overlayArray[index] !== 'T' && overlayArray[index] !== 'Z') {
+            enemies.push({
+                x: (spawnCol * unit) + unit / 2,
+                y: (spawnRow * unit) + unit / 2,
+                hp: 1,
+                lastDmgTime: 0,
+                wanderTargetX: (spawnCol * unit) + unit / 2,
+                wanderTargetY: (spawnRow * unit) + unit / 2,
+                wanderTimer: 0
+            });
+        }
+    }
+}, 800);
+
+document.getElementById('atk1').addEventListener('click', () => {
+    if (gameState !== STATE.PLAYING) return;
+    let now = Date.now();
+    if (now >= nextAtk1Time) {
+        executeAoEAttack(1.5, 1);
+        vfxParticles.push({ type: 'primary', x: player.x, y: player.y, radius: 0, maxRadius: 1.5 * unit, alpha: 1 });
+        nextAtk1Time = now + 1000;
+    }
+});
+
+document.getElementById('atk2').addEventListener('click', () => {
+    if (gameState !== STATE.PLAYING) return;
+    let now = Date.now();
+    if (now >= nextAtk2Time) {
+        executeAoEAttack(4, 5);
+        for (let i = 0; i < 15; i++) {
+            let angle = Math.random() * Math.PI * 2;
+            let distance = Math.random() * (4 * unit);
+            vfxParticles.push({
+                type: 'secondary',
+                x: player.x + Math.cos(angle) * distance,
+                y: player.y + Math.sin(angle) * distance,
+                radius: Math.random() * 10 + 5,
+                alpha: 1,
+                delay: Math.random() * 300
+            });
+        }
+        nextAtk2Time = now + 45000;
+    }
+});
+
+function executeAoEAttack(radiusInUnits, damage) {
+    let attackRadiusPixels = radiusInUnits * unit;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let e = enemies[i];
+        let dist = Math.sqrt((e.x - player.x) ** 2 + (e.y - player.y) ** 2);
+        if (dist <= attackRadiusPixels) {
+            e.hp -= damage;
+            if (e.hp <= 0) {
+                if (Math.random() < 0.6) drops.push({ type: 'heart', x: e.x, y: e.y });
+                enemies.splice(i, 1);
+            }
+        }
+    }
+    for (let i = 0; i < overlayArray.length; i++) {
+        if (overlayArray[i] === 'T') {
+            let tCol = i % gridMaxUnits;
+            let tRow = Math.floor(i / gridMaxUnits);
+            let tWorldX = tCol * unit + (unit / 2);
+            let tWorldY = tRow * unit + (unit / 2);
+            let dist = Math.sqrt((tWorldX - player.x) ** 2 + (tWorldY - player.y) ** 2);
+            if (dist <= attackRadiusPixels) {
+                overlayHealth[i] -= damage;
+                vfxParticles.push({ type: 'secondary', x: tWorldX, y: tWorldY, radius: 5, alpha: 1, delay: 0 });
+                if (overlayHealth[i] <= 0) {
+                    overlayArray[i] = '0';
+                    delete overlayHealth[i];
+                    drops.push({ type: 'wood', x: tWorldX, y: tWorldY });
+                    persistActiveWorld(); // tree removed -> persist overlay
+                }
+            }
+        }
+    }
+    persistActivePlayer();
+}
+
+function checkLineCollision(x1, y1, x2, y2) {
+    let steps = Math.ceil(Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2) / 16);
+    for (let i = 0; i <= steps; i++) {
+        let t = i / steps;
+        let checkX = x1 + (x2 - x1) * t;
+        let checkY = y1 + (y2 - y1) * t;
+        let col = Math.floor(checkX / unit);
+        let row = Math.floor(checkY / unit);
+        if (col >= 0 && col < gridMaxUnits && row >= 0 && row < gridMaxUnits) {
+            let idx = row * gridMaxUnits + col;
+            if (mapArray[idx] === 'W' || overlayArray[idx] === 'T') {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+canvas.addEventListener("click", (e) => {
+    if (gameState !== STATE.PLAYING) return;
+    if (e.clientX > window.innerWidth - 260 && e.clientY < 400) {
+        if (document.getElementById("inv-panel").style.display === "block" || e.clientX > window.innerWidth - 130) {
+            return;
+        }
+    }
+    if (e.clientX < 130 && e.clientY < 80) return; // pause button area
+    if (assetsLoaded < totalAssets || mapArray.length === 0) return;
+
+    let worldClickX = (e.clientX - canvas.width / 2) / zoom + (camera.x + (canvas.width / 2) / zoom);
+    let worldClickY = (e.clientY - canvas.height / 2) / zoom + (camera.y + (canvas.height / 2) / zoom);
+
+    let distance = Math.sqrt((worldClickX - player.x) ** 2 + (worldClickY - player.y) ** 2);
+    let insideGrid = (worldClickX >= 0 && worldClickX <= gridLimit && worldClickY >= 0 && worldClickY <= gridLimit);
+
+    let clickCol = Math.floor(worldClickX / unit);
+    let clickRow = Math.floor(worldClickY / unit);
+
+    let targetTileBlocked = false;
+    if (clickCol >= 0 && clickCol < gridMaxUnits && clickRow >= 0 && clickRow < gridMaxUnits) {
+        let idx = clickRow * gridMaxUnits + clickCol;
+        if (mapArray[idx] === 'W' || overlayArray[idx] === 'T') {
+            targetTileBlocked = true;
+        }
+    }
+
+    let isBlockedByWall = checkLineCollision(player.x, player.y, worldClickX, worldClickY);
+
+    if (debugMode) {
+        debugLine.startX = player.x;
+        debugLine.startY = player.y;
+        debugLine.endX = worldClickX;
+        debugLine.endY = worldClickY;
+        debugLine.color = (isBlockedByWall || targetTileBlocked) ? "red" : "green";
+        debugLine.active = true;
+    }
+
+    feedback.color = "red";
+    if (insideGrid && !isBlockedByWall && !targetTileBlocked) {
+        if (distance <= 3 * unit) {
+            player.targetX = worldClickX; player.targetY = worldClickY;
+            feedback.color = "green";
+        } else if (distance <= 5 * unit && !isExhausted) {
+            player.targetX = worldClickX; player.targetY = worldClickY;
+            feedback.color = "deepskyblue";
+            sprintEnergy -= 20;
+            if (sprintEnergy <= 0) { sprintEnergy = 0; isExhausted = true; }
+        }
+    }
+    feedback.x = worldClickX; feedback.y = worldClickY; feedback.alpha = 1;
+});
+
+/* =====================================================================
+   RENDER LOOP
+   ===================================================================== */
+function draw() {
+    ctx.fillStyle = "#111"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (gameState === STATE.PLAYING || gameState === STATE.PAUSED || gameState === STATE.DEAD) {
+        renderGame();
+    }
+
+    requestAnimationFrame(draw);
+}
+
+function renderGame() {
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-camera.x - (canvas.width / 2) / zoom, -camera.y - (canvas.height / 2) / zoom);
+
+    let startCol = Math.max(0, Math.floor(camera.x / unit));
+    let startRow = Math.max(0, Math.floor(camera.y / unit));
+    let endCol = Math.min(gridMaxUnits, startCol + Math.ceil(canvas.width / (unit * zoom)) + 2);
+    let endRow = Math.min(gridMaxUnits, startRow + Math.ceil(canvas.height / (unit * zoom)) + 2);
+
+    // LAYER 1: GROUND TILES
+    if (mapArray.length > 0) {
+        for (let row = startRow; row < endRow; row++) {
+            for (let col = startCol; col < endCol; col++) {
+                let index = row * gridMaxUnits + col;
+                let tile = mapArray[index];
+                if (tile === 'G') ctx.drawImage(grassImg, col * unit, row * unit, unit, unit);
+                else if (tile === 'S') ctx.drawImage(sandImg, col * unit, row * unit, unit, unit);
+                else if (tile === 'W') ctx.drawImage(waterImg, col * unit, row * unit, unit, unit);
+            }
+        }
+    }
+
+    // LAYER 2: SPAWN MARKER (subtle glow under player spawn)
+    const sp = findSpawnPoint();
+    ctx.save();
+    let pulse = 0.5 + 0.5 * Math.sin(Date.now() / 400);
+    ctx.globalAlpha = 0.25 + 0.2 * pulse;
+    ctx.fillStyle = "#00ffcc";
+    ctx.beginPath();
+    ctx.arc(sp.x, sp.y, unit * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    // draw a small "Z" rune
+    ctx.fillStyle = "rgba(0, 255, 204, 0.9)";
+    ctx.font = "bold 28px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Z", sp.x, sp.y - 4);
+    ctx.restore();
+
+    // LAYER 3: DROPS
+    for (let i = drops.length - 1; i >= 0; i--) {
+        let itemDrop = drops[i];
+        if (itemDrop.type === 'wood') {
+            ctx.drawImage(woodImg, itemDrop.x - 16, itemDrop.y - 16, 32, 32);
+        } else {
+            ctx.drawImage(heartImg, itemDrop.x - 12, itemDrop.y - 12, 24, 24);
+        }
+        let pickupDist = Math.sqrt((itemDrop.x - player.x) ** 2 + (itemDrop.y - player.y) ** 2);
+        if (pickupDist < unit * 0.6) {
+            if (itemDrop.type === 'wood') {
+                playerInventory["wood"] = (playerInventory["wood"] || 0) + 1;
+                // also remove from deathDrops persistent store
+                if (activePlayerData && activePlayerData.deathDrops) {
+                    const dd = activePlayerData.deathDrops.find(d => d.type === 'wood');
+                    if (dd) { dd.count = Math.max(0, (dd.count || 1) - 1); if (dd.count === 0) activePlayerData.deathDrops = activePlayerData.deathDrops.filter(d => d !== dd); }
+                }
+                updateInventoryUI();
+            } else {
+                player.hp = Math.min(player.maxHp, player.hp + 1.5);
+            }
+            drops.splice(i, 1);
+            persistActivePlayer();
+        }
+    }
+
+    // LAYER 4: TREES
+    if (overlayArray.length > 0) {
+        for (let row = startRow; row < endRow; row++) {
+            for (let col = startCol; col < endCol; col++) {
+                let index = row * gridMaxUnits + col;
+                if (overlayArray[index] === 'T') {
+                    ctx.drawImage(treeImg, col * unit, row * unit - 12, unit, unit + 12);
+                    let currentTreeHp = overlayHealth[index];
+                    if (currentTreeHp < 5) {
+                        let tBarW = 40, tBarH = 4;
+                        let tBarX = col * unit + (unit - tBarW) / 2;
+                        let tBarY = row * unit - 20;
+                        ctx.fillStyle = "rgba(0,0,0,0.6)";
+                        ctx.fillRect(tBarX, tBarY, tBarW, tBarH);
+                        ctx.fillStyle = "#ffcc00";
+                        ctx.fillRect(tBarX, tBarY, tBarW * (currentTreeHp / 5), tBarH);
+                    }
+                }
+            }
+        }
+    }
+
+    // LAYER 5: SLIMES
+    let now = Date.now();
+    ctx.fillStyle = "deepskyblue";
+    enemies.forEach(e => {
+        let distanceToPlayer = Math.sqrt((e.x - player.x) ** 2 + (e.y - player.y) ** 2);
+        let nextX = e.x, nextY = e.y;
+
+        if (gameState === STATE.PLAYING && distanceToPlayer <= 7 * unit) {
+            let angle = Math.atan2(player.y - e.y, player.x - e.x);
+            nextX += Math.cos(angle) * 1.5;
+            nextY += Math.sin(angle) * 1.5;
+        } else if (gameState === STATE.PLAYING) {
+            e.wanderTimer -= 1;
+            if (e.wanderTimer <= 0 || Math.sqrt((e.wanderTargetX - e.x) ** 2 + (e.wanderTargetY - e.y) ** 2) < 5) {
+                let wanderAngle = Math.random() * Math.PI * 2;
+                let wanderDist = Math.random() * 150 + 50;
+                e.wanderTargetX = Math.max(0, Math.min(gridLimit, e.x + Math.cos(wanderAngle) * wanderDist));
+                e.wanderTargetY = Math.max(0, Math.min(gridLimit, e.y + Math.sin(wanderAngle) * wanderDist));
+                e.wanderTimer = Math.floor(Math.random() * 120) + 60;
+            }
+            let angle = Math.atan2(e.wanderTargetY - e.y, e.wanderTargetX - e.x);
+            nextX += Math.cos(angle) * 0.6;
+            nextY += Math.sin(angle) * 0.6;
+        }
+
+        let slimeCol = Math.floor(nextX / unit);
+        let slimeRow = Math.floor(nextY / unit);
+        if (slimeCol >= 0 && slimeCol < gridMaxUnits && slimeRow >= 0 && slimeRow < gridMaxUnits) {
+            let sIdx = slimeRow * gridMaxUnits + slimeCol;
+            if (mapArray[sIdx] !== 'W' && overlayArray[sIdx] !== 'T') {
+                e.x = nextX; e.y = nextY;
+            } else {
+                e.wanderTimer = 0;
+            }
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(e.x, e.y - 24);
+        ctx.lineTo(e.x + 16, e.y + 12);
+        ctx.lineTo(e.x - 16, e.y + 12);
+        ctx.closePath();
+        ctx.fill();
+
+        if (gameState === STATE.PLAYING && distanceToPlayer < unit * 0.9) {
+            if (now - e.lastDmgTime >= 1500) {
+                player.hp -= 0.5;
+                if (player.hp < 0) player.hp = 0;
+                e.lastDmgTime = now;
+                persistActivePlayer();
+                checkPlayerDeath();
+            }
+        }
+    });
+
+    // LAYER 6: VFX
+    for (let i = vfxParticles.length - 1; i >= 0; i--) {
+        let p = vfxParticles[i];
+        if (p.type === 'primary') {
+            p.radius += 4; p.alpha -= 0.03;
+            ctx.save(); ctx.strokeStyle = "purple"; ctx.lineWidth = 5; ctx.globalAlpha = Math.max(0, p.alpha);
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+            if (p.radius >= p.maxRadius || p.alpha <= 0) vfxParticles.splice(i, 1);
+        } else if (p.type === 'secondary') {
+            if (p.delay > 0) { p.delay -= 16.6; continue; }
+            p.radius += 1.5; p.alpha -= 0.05;
+            ctx.save(); ctx.strokeStyle = "darkviolet"; ctx.lineWidth = 3; ctx.globalAlpha = Math.max(0, p.alpha);
+            ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+            if (p.alpha <= 0) vfxParticles.splice(i, 1);
+        }
+    }
+
+    if (feedback.alpha > 0) {
+        ctx.strokeStyle = feedback.color; ctx.globalAlpha = feedback.alpha;
+        ctx.lineWidth = 4 / zoom; ctx.beginPath();
+        ctx.arc(feedback.x, feedback.y, 15, 0, Math.PI * 2); ctx.stroke();
+        feedback.alpha -= 0.03; ctx.globalAlpha = 1;
+    }
+
+    // LAYER 7: PLAYER
+    ctx.drawImage(charImg, player.x - unit / 2, player.y - unit / 2, unit, unit);
+
+    let barWidth = 50, barHeight = 6;
+    let barX = player.x - barWidth / 2, barY = player.y - unit / 2 - 14;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; ctx.fillRect(barX, barY, barWidth, barHeight);
+    if (player.hp > 0) {
+        ctx.fillStyle = player.hp > 3 ? "lime" : "red";
+        ctx.fillRect(barX, barY, barWidth * (player.hp / player.maxHp), barHeight);
+    }
+
+    if (debugMode) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.4)"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(player.x, player.y, 3 * unit, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "rgba(0, 191, 255, 0.4)";
+        ctx.beginPath(); ctx.arc(player.x, player.y, 5 * unit, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = "rgba(255, 0, 0, 0.6)"; ctx.lineWidth = 4;
+        ctx.strokeRect(0, 0, gridLimit, gridLimit);
+        if (debugLine.active) {
+            ctx.strokeStyle = debugLine.color; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.moveTo(debugLine.startX, debugLine.startY); ctx.lineTo(debugLine.endX, debugLine.endY); ctx.stroke();
+        }
+        ctx.restore();
+    }
+
+    ctx.restore();
+
+    // Ambient Lighting Fog
+    ctx.save();
+    let fogCanvas = document.createElement('canvas'); fogCanvas.width = canvas.width; fogCanvas.height = canvas.height;
+    let fCtx = fogCanvas.getContext('2d'); fCtx.fillStyle = "black"; fCtx.fillRect(0, 0, canvas.width, canvas.height);
+    let pScrX = (player.x - camera.x - (canvas.width / 2) / zoom) * zoom + canvas.width / 2;
+    let pScrY = (player.y - camera.y - (canvas.height / 2) / zoom) * zoom + canvas.height / 2;
+    let radGrad = fCtx.createRadialGradient(pScrX, pScrY, 6 * unit * zoom, pScrX, pScrY, 8 * unit * zoom);
+    radGrad.addColorStop(0, "rgba(0,0,0,1)"); radGrad.addColorStop(1, "rgba(0,0,0,0)");
+    fCtx.globalCompositeOperation = "destination-out"; fCtx.fillStyle = radGrad;
+    fCtx.beginPath(); fCtx.arc(pScrX, pScrY, 8 * unit * zoom, 0, Math.PI * 2); fCtx.fill();
+    ctx.drawImage(fogCanvas, 0, 0); ctx.restore();
+
+    // Pause dim
+    if (gameState === STATE.PAUSED) {
+        ctx.fillStyle = "rgba(0,0,0,0.5)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    // Death tint
+    if (gameState === STATE.DEAD) {
+        ctx.fillStyle = "rgba(60,0,0,0.45)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Update player physics only when playing
+    if (gameState === STATE.PLAYING) {
+        let oldX = player.x, oldY = player.y;
+        player.x += (player.targetX - player.x) * 0.04;
+        player.y += (player.targetY - player.y) * 0.04;
+        if (Math.abs(player.x - oldX) > 0.5 || Math.abs(player.y - oldY) > 0.5) {
+            if (Math.random() < 0.02) persistActivePlayer();
+        }
+        camera.x += (player.x - (canvas.width / 2) / zoom - camera.x) * 0.1;
+        camera.y += (player.y - (canvas.height / 2) / zoom - camera.y) * 0.1;
+    } else {
+        // still keep camera loosely attached on pause/dead
+        camera.x += (player.x - (canvas.width / 2) / zoom - camera.x) * 0.02;
+        camera.y += (player.y - (canvas.height / 2) / zoom - camera.y) * 0.02;
+    }
+
+    // Sprint Energy Recharge
+    if (gameState === STATE.PLAYING) {
+        const fill = document.getElementById("sprint-bar-fill");
+        if (isExhausted) {
+            fill.classList.add("exhausted"); sprintEnergy += 0.2;
+            if (sprintEnergy >= 100) { isExhausted = false; fill.classList.remove("exhausted"); }
+        } else if (sprintEnergy < 100) {
+            sprintEnergy += 0.05;
+        }
+        fill.style.width = sprintEnergy + "%";
+    }
+
+    // Action Cooldown Visual
+    if (gameState === STATE.PLAYING) {
+        let rightNow = Date.now();
+        let btn1 = document.getElementById('atk1'); let txt1 = document.getElementById('cd1-txt');
+        if (rightNow < nextAtk1Time) { btn1.disabled = true; txt1.innerText = ((nextAtk1Time - rightNow) / 1000).toFixed(1) + "s"; }
+        else { btn1.disabled = false; txt1.innerText = "1s CD"; }
+
+        let btn2 = document.getElementById('atk2'); let txt2 = document.getElementById('cd2-txt');
+        if (rightNow < nextAtk2Time) { btn2.disabled = true; txt2.innerText = ((nextAtk2Time - rightNow) / 1000).toFixed(1) + "s"; }
+        else { btn2.disabled = false; txt2.innerText = "45s CD"; }
+    }
+
+    if (debugMode) {
+        document.getElementById("debug-pos").innerText = `PLAYER X: ${player.x.toFixed(1)} | Y: ${player.y.toFixed(1)}`;
+        document.getElementById("debug-hp").innerText = `PLAYER HP: ${player.hp.toFixed(1)} / ${player.maxHp}`;
+        document.getElementById("debug-enemies").innerText = `SLIMES SPAWNED: ${enemies.length} / 128`;
+    }
+}
+
+/* =====================================================================
+   GAME OVER / RESPAWN
+   ===================================================================== */
+function checkPlayerDeath() {
+    if (player.hp <= 0 && gameState === STATE.PLAYING) {
+        player.hp = 0;
+        triggerDeath();
+    }
+}
+
+function triggerDeath() {
+    // Drop all inventory at death location as persistent death drops
+    if (!activePlayerData.deathDrops) activePlayerData.deathDrops = [];
+    const dropsToSpawn = [];
+    for (const [item, count] of Object.entries(playerInventory)) {
+        if (count > 0) {
+            // push to persistent store
+            const existing = activePlayerData.deathDrops.find(d => d.type === item && Math.abs(d.x - player.x) < 32 && Math.abs(d.y - player.y) < 32);
+            if (existing) existing.count += count;
+            else activePlayerData.deathDrops.push({ type: item, x: player.x, y: player.y, count });
+            // scatter a few visual drops
+            for (let i = 0; i < Math.min(count, 8); i++) {
+                dropsToSpawn.push({
+                    type: item,
+                    x: player.x + (Math.random() - 0.5) * 60,
+                    y: player.y + (Math.random() - 0.5) * 60
+                });
+            }
+        }
+    }
+    drops.push(...dropsToSpawn);
+    // clear inventory
+    playerInventory = { wood: 0 };
+    updateInventoryUI();
+    persistActivePlayer();
+    // show death screen
+    gameState = STATE.DEAD;
+    showScreen('death-screen');
+    // pause button hidden while dead
+    document.getElementById('pause-btn').style.display = 'none';
+}
+
+function respawnPlayer() {
+    const sp = findSpawnPoint();
+    player.x = sp.x; player.y = sp.y;
+    player.targetX = sp.x; player.targetY = sp.y;
+    player.hp = player.maxHp;
+    camera.x = player.x - (canvas.width / 2) / zoom;
+    camera.y = player.y - (canvas.height / 2) / zoom;
+    sprintEnergy = 100; isExhausted = false;
+    enemies = []; // clear nearby enemies so the player doesn't instantly die again
+    persistActivePlayer();
+    hideAllScreens();
+    document.getElementById('pause-btn').style.display = 'block';
+    gameState = STATE.PLAYING;
+    showToast('Respawned at Z.');
+}
+
+/* =====================================================================
+   SCREEN NAVIGATION
+   ===================================================================== */
+function hideAllScreens() {
+    document.querySelectorAll('.screen-overlay').forEach(el => el.classList.remove('active'));
+}
+
+function showScreen(id) {
+    hideAllScreens();
+    document.getElementById(id).classList.add('active');
+}
+
+function setGameUIVisible(visible) {
+    const els = ['pause-btn','inv-toggle-btn','ui-container','sprint-container','attack-container'];
+    els.forEach(id => { document.getElementById(id).style.display = visible ? '' : 'none'; });
+    if (visible) {
+        // restore default display styles
+        document.getElementById('ui-container').style.display = 'flex';
+        document.getElementById('sprint-container').style.display = 'flex';
+        document.getElementById('attack-container').style.display = 'flex';
+        document.getElementById('pause-btn').style.display = 'block';
+        document.getElementById('inv-toggle-btn').style.display = 'block';
+    }
+}
+
+function gotoMainMenu() {
+    gameState = STATE.MENU;
+    currentWorldId = null;
+    setGameUIVisible(false);
+    document.getElementById('inv-panel').style.display = 'none';
+    showScreen('main-menu');
+}
+
+function gotoWorldList() {
+    gameState = STATE.WORLD_LIST;
+    setGameUIVisible(false);
+    showScreen('world-list-page');
+    renderWorldList();
+}
+
+function renderWorldList() {
+    const container = document.getElementById('world-list-container');
+    const ids = getWorldRegistry();
+    if (ids.length === 0) {
+        container.innerHTML = '<div class="empty-state">No worlds yet. Create one to begin.</div>';
+        return;
+    }
+    let html = '';
+    for (const id of ids) {
+        const w = loadWorld(id);
+        if (!w) continue;
+        const date = new Date(w.createdAt).toLocaleString();
+        const safeName = w.name.replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const safeSeed = (w.seed || '').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        html += `
+            <div class="world-item" onclick="playWorld('${w.id}')">
+                <div>
+                    <div class="w-name">${safeName}</div>
+                    <div class="w-meta">Seed: ${safeSeed || '(random)'} &middot; Created ${date}</div>
+                </div>
+                <div class="w-actions">
+                    <button class="icon-btn" onclick="event.stopPropagation(); playWorld('${w.id}')">PLAY</button>
+                    <button class="icon-btn del" onclick="event.stopPropagation(); deleteWorldPrompt('${w.id}', '${safeName.replace(/'/g,"\\'")}')">DELETE</button>
+                </div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+}
+
+function deleteWorldPrompt(id, name) {
+    if (!confirm(`Delete world "${name}"? This cannot be undone.`)) return;
+    deleteWorld(id);
+    renderWorldList();
+    showToast('World deleted.');
+}
+
+function gotoCreateWorld() {
+    gameState = STATE.WORLD_CREATE;
+    showScreen('world-create-page');
+    document.getElementById('input-world-name').value = '';
+    document.getElementById('input-world-seed').value = '';
+    setTimeout(() => document.getElementById('input-world-name').focus(), 50);
+}
+
+function createWorld() {
+    const name = document.getElementById('input-world-name').value.trim() || 'World ' + new Date().toLocaleDateString();
+    let seed = document.getElementById('input-world-seed').value.trim();
+    if (!seed) seed = Math.floor(Math.random() * 1e9).toString();
+    // show loading screen during generation
+    const loadingEl = document.createElement('div');
+    loadingEl.id = 'gen-loading';
+    loadingEl.style.cssText = 'position:absolute;inset:0;background:#111;z-index:300;display:flex;align-items:center;justify-content:center;color:#00ffcc;font-size:20px;letter-spacing:4px;';
+    loadingEl.innerHTML = 'GENERATING WORLD...';
+    document.body.appendChild(loadingEl);
+    // defer so the loading UI paints
+    setTimeout(() => {
+        try {
+            generateWorld(name, seed);
+            document.body.removeChild(loadingEl);
+            showToast('World "' + name + '" created!');
+            playWorld(getWorldRegistry()[getWorldRegistry().length - 1]);
+        } catch (err) {
+            console.error(err);
+            document.body.removeChild(loadingEl);
+            showToast('Failed to generate: ' + err.message);
+        }
+    }, 50);
+}
+
+function playWorld(id) {
+    if (!loadWorldIntoMemory(id)) return;
+    hideAllScreens();
+    setGameUIVisible(true);
+    // center camera on player
+    camera.x = player.x - (canvas.width / 2) / zoom;
+    camera.y = player.y - (canvas.height / 2) / zoom;
+    gameState = STATE.PLAYING;
+    // if player saved as dead, force respawn
+    if (player.hp <= 0) {
+        player.hp = player.maxHp;
+        const sp = findSpawnPoint();
+        player.x = sp.x; player.y = sp.y;
+        player.targetX = sp.x; player.targetY = sp.y;
+        persistActivePlayer();
+    }
+    showToast('Welcome to ' + (loadWorld(id).name));
+}
+
+function pauseGame() {
+    if (gameState !== STATE.PLAYING) return;
+    gameState = STATE.PAUSED;
+    persistActivePlayer();
+    persistActiveWorld();
+    showScreen('pause-menu');
+}
+
+function resumeGame() {
+    if (gameState !== STATE.PAUSED) return;
+    hideAllScreens();
+    gameState = STATE.PLAYING;
+}
+
+function saveAndQuit() {
+    persistActivePlayer();
+    persistActiveWorld();
+    enemies = [];
+    drops = [];
+    vfxParticles = [];
+    currentWorldId = null;
+    gotoMainMenu();
+    showToast('Game saved.');
+}
+
+/* =====================================================================
+   TOAST
+   ===================================================================== */
+let toastTimer = null;
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+/* =====================================================================
+   BOOTSTRAP
+   ===================================================================== */
+// Initial state - menu is shown by updateLoadingBar() when assets finish.
+gameState = STATE.BOOT;
+setGameUIVisible(false);
+draw();
+</script>
+</body>
+</html>
